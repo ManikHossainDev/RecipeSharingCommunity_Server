@@ -1,37 +1,17 @@
-import {Server} from "http";
-import mongoose from "mongoose";
-import config from "./app/config";
-import app from "./app";
-
-let server: Server;
+import mongoose from 'mongoose';
+import app from './app';
+import config from './app/config';
 
 async function main() {
     try {
-      await mongoose.connect(config.database_url as string);
-  
-      app.listen(config.port, () => {
-        console.log(`app listening on port ${config.port}`);
-      });
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  main();
+        await mongoose.connect(config.database_url as string);
 
-  
-process.on("unhandledRejection", (err) => {
-    console.log(`unhandledRejection is detected shutting down the server`);
-    console.log("err", err);
-    if (server) {
-      server.close(() => {
-        process.exit(1);
-      });
+        app.listen(config.port, () => {
+            console.log(`recipe sharing app is listening on port ${config.port}`);
+        });
+    } catch (err) {
+        console.log(err);
     }
-    process.exit(1);
-  });
-  
-  process.on("uncaughtException", () => {
-    console.log(`uncaughtException is detected shutting down the server`);
-    process.exit(1);
-  });
-  
+}
+
+main();

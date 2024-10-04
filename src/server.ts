@@ -1,35 +1,37 @@
-import { Server } from "http";
+import {Server} from "http";
 import mongoose from "mongoose";
-import app from "./app";
 import config from "./app/config";
+import app from "./app";
 
-let SERVER: Server;
-// main server: database connection
-async function server() {
-  try {
-    await mongoose.connect(config.database_url as string);
-    SERVER = app.listen(config.port, () => {
-      console.log(`Server is Running on http://localhost:${config.port}`);
-    });
-  } catch (error) {
-    console.log(error);
+let server: Server;
+
+async function main() {
+    try {
+      await mongoose.connect(config.database_url as string);
+  
+      app.listen(config.port, () => {
+        console.log(`app listening on port ${config.port}`);
+      });
+    } catch (error) {
+      console.log(error);
+    }
   }
-}
-server();
+  main();
 
-// unhandledRejection
-process.on("unhandledRejection", () => {
-  console.log("unhandledRejection on is detected, shutting down!");
-  if (SERVER) {
-    SERVER.close(() => {
-      process.exit(1);
-    });
-  }
-  process.exit(1);
-});
-
-// uncaughtException
-process.on("uncaughtException", () => {
-  console.log("uncaughtException on is detected, shutting down!");
-  process.exit(1);
-});
+  
+process.on("unhandledRejection", (err) => {
+    console.log(`unhandledRejection is detected shutting down the server`);
+    console.log("err", err);
+    if (server) {
+      server.close(() => {
+        process.exit(1);
+      });
+    }
+    process.exit(1);
+  });
+  
+  process.on("uncaughtException", () => {
+    console.log(`uncaughtException is detected shutting down the server`);
+    process.exit(1);
+  });
+  

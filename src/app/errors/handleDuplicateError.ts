@@ -1,23 +1,21 @@
-import { TErrorSources, TGenericErrorResponse } from "../types/error";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+import { TErrorSources, TGenericErrorResponse } from "../interface/error";
 
-const handleDuplicateError = (error: any): TGenericErrorResponse => {
-  const statusCode = 400;
+export const handleDuplicateError = (err : any) : TGenericErrorResponse => {
 
-  const match = error.message.match(/"([^"]*)"/);
-  const extractedMessage = match && match[1];
-
-  const errorSources: TErrorSources = [
-    {
-      path: "",
-      message: `${extractedMessage} is already exits`,
-    },
-  ];
-
-  return {
-    statusCode,
-    message: "Invalid Id",
-    errorSources,
-  };
-};
-
-export default handleDuplicateError;
+   
+    const errorSources : TErrorSources =  [
+        {
+            path : "",
+           
+          "message": err.message
+        }
+    ]
+    const statusCode = 400
+    return {
+        statusCode,
+        message :  err.message,
+        errorSources
+    }
+}

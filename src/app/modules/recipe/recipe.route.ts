@@ -1,45 +1,35 @@
-import express from 'express';
-import validateRequest from '../../middlewares/validateRequest';
-
-import auth from '../../middlewares/auth';
+import { Router } from 'express';
+import validateRequest from '../../middlwares/validateRequest';
+import { RecipeValidation } from './recipe.validation';
 import { RecipeControllers } from './recipe.controller';
+import auth from '../../middlwares/auth';
+import { USER_ROLE } from '../../types';
 
-
-const router = express.Router();
+const router = Router();
 
 router.post(
-    '/',
-    // auth('admin'),
-    RecipeControllers.createRecipe,
+  '/',
+  validateRequest(RecipeValidation.recipeValidationSchema),
+  RecipeControllers.createRecipe
 );
 
-router.get(
-    '/categories',
-    RecipeControllers.getAllCategories,
+router.get('/', RecipeControllers.getAllRecipe);
+
+router.get('/short', RecipeControllers.getAllRecipeWithShort);
+
+router.get('/:id', RecipeControllers.getSingleRecipe);
+
+router.put(
+  '/:id',
+  auth(USER_ROLE.user, USER_ROLE.admin),
+  validateRequest(RecipeValidation.updateRecipeValidationSchema),
+  RecipeControllers.updateRecipe
 );
 
-router.get(
-    '/user',
-    auth('user'),
-    RecipeControllers.getRecipesByUser,
+router.delete(
+  '/:id',
+  auth(USER_ROLE.user, USER_ROLE.admin),
+  RecipeControllers.deleteRecipe
 );
 
-router.delete('/:id', auth('user'), RecipeControllers.deleteRecipe);
-
-router.get(
-    '/:id',
-    // auth('user', 'admin'),
-    RecipeControllers.getSingleRecipe,
-);
-
-router.get(
-    '/',
-    // auth('user', 'admin'),
-    RecipeControllers.getAllRecipes,
-);
-
-
-
-
-
-export const RecipeRoutes = router;
+export const RecipeRouter = router;

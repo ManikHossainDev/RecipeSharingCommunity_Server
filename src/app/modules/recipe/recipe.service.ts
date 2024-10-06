@@ -1,74 +1,95 @@
-import httpStatus from "http-status";
-import AppError from "../../errors/AppError";
-import { TRecipe } from "./recipe.interface";
-import { RecipeModel } from "./recipe.model";
+import httpStatus from 'http-status';
+import AppError from '../../errors/AppError';
+import { getUserInfo } from '../../middlwares/auth';
+import { TRecipe } from './recipe.interface';
+import { Recipe } from './recipe.model';
 
-type CategoryItem = {
-    _id: string;
-    image: string;
-    title: string;
-    category: string[];
+const createRecipeIntoDB = async (payload: TRecipe) => {
+  const result = await Recipe.create(payload);
+  return result;
 };
 
-const createRecipeIntoDB = async (recipe: TRecipe) => {
-    const isRecipeExists = await RecipeModel.findOne({ name: recipe.title })
-    if (isRecipeExists) {
-        throw new AppError(httpStatus.CONFLICT, 'This recipe is already exists!');
-    }
-    const result = await RecipeModel.create(recipe)
-    return result
-}
-
-const getAllCategoriesFromDB = async (): Promise<CategoryItem[]> => {
-    const result: CategoryItem[] = await RecipeModel.find({}, { category: 1, image: 1, title: 1, _id: 1 });
-
-    const uniqueCategories: CategoryItem[] = [];
-    const categorySet = new Set<string>();
-
-
-    result.forEach(item => {
-        const category = item.category[0]; // Extract the single category string from the array
-        if (!categorySet.has(category)) {
-            categorySet.add(category);
-            uniqueCategories.push(item);
-        }
-    });
-
-    return uniqueCategories;
+const getAllRecipeFromDB = async () => {
+  const result = await Recipe.find();
+  return result;
 };
 
-
-const getAllRecipesFromDB = async () => {
-    const result = await RecipeModel.find().populate('user')
-    return result;
+const getAllRecipeWithShortFromDB = async (page: number, limit: number) => {
+  const skip = (page - 1) * limit;
+  const result = await Recipe.find().skip(skip).limit(limit);
+  return result;
 };
 
 const getSingleRecipeFromDB = async (id: string) => {
-    const result = await RecipeModel.findById(id).populate('user')
-    return result
-}
+  const result = await Recipe.find({ _id: id });
+  return result;
+};
 
-const getRecipesByUserFromDB = async (userId: string) => {
+const updateRecipeFromDB = async (id: string, payload: TRecipe) => {
+  const user = getUserInfo();
+  let result;
 
-    const result = await RecipeModel.find({ user: userId }).populate('user')
-    return result;
+  // Check if only specific fields related to rating, upvote, downvote, or comments are being updated
+  if (
+    (payload?.rating ||
+      payload?.upvote ||
+      payload?.downvote ||
+      payload?.rating === 0 ||
+      payload?.upvote === 0 ||
+      payload?.downvote === 0) &&
+    !payload?.title &&
+    !payload?.description &&
+    !payload?.image &&
+    !payload?.publishUser &&
+    !payload?.isPremium &&
+    !payload?.isDeleted &&
+    !payload?.instructions
+  ) {
+    result = await Recipe.findByIdAndUpdate({ _id: id }, payload, {
+      new: true,
+    });
+  } else {
+    // Find recipe by user email or check if the user is an admin
+    const findRecipeByUser = await Recipe.findOne({
+      publishUser: user?.email,
+      _id: id,
+    });
+
+    if (findRecipeByUser || user?.role === 'admin') {
+      result = await Recipe.findByIdAndUpdate({ _id: id }, payload, {
+        new: true,
+      });
+    } else {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'This is not your recipe');
+    }
+  }
+
+  return result;
 };
 
 const deleteRecipeFromDB = async (id: string) => {
-    const result = await RecipeModel.findByIdAndDelete(
-        id,
-        {
-            new: true,
-        },
-    );
-    return result;
+  const user = getUserInfo();
+
+  const findRecipeByUser = await Recipe.findOne({
+    publishUser: user?.email,
+    _id: id,
+  });
+
+  let result;
+  if (findRecipeByUser || user?.role === 'admin') {
+    result = await Recipe.deleteOne({ _id: id });
+  } else {
+    throw new AppError(httpStatus.UNAUTHORIZED, 'This is not your recipe');
+  }
+
+  return result;
 };
 
-export const RecipeServices = {
-    createRecipeIntoDB,
-    getAllRecipesFromDB,
-    getSingleRecipeFromDB,
-    getRecipesByUserFromDB,
-    getAllCategoriesFromDB,
-    deleteRecipeFromDB
-}
+export const RecipeService = {
+  createRecipeIntoDB,
+  getAllRecipeFromDB,
+  getSingleRecipeFromDB,
+  getAllRecipeWithShortFromDB,
+  updateRecipeFromDB,
+  deleteRecipeFromDB,
+};

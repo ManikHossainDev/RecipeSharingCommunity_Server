@@ -1,100 +1,89 @@
-import { Schema, model } from "mongoose";
-import { TUser, UserModel } from "./user.interface";
-import bcrypt from 'bcrypt'
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-this-alias */
+import { model, Schema } from 'mongoose';
+import { TUser } from './user.interface';
+import config from '../../config';
+const bcrypt = require('bcrypt');
 
-const userSchema = new Schema<TUser, UserModel>({
-    name: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true
-    },
-    password: {
-        type: String,
-        required: true
-    },
-    phone: {
-        type: String,
-        required: true
-    },
-    role: {
-        type: String,
-        enum: ['admin', 'user'],
-    },
-    address: {
-        type: String,
-        required: true
-    },
-    photo: {
-        type: String,
-    },
-    bio: {
-        type: String,
-    },
-    isBlocked: {
-        type: Boolean,
-        default: false
-    },
-    membership: {
-        type: String,
-        required: true
-    },
-    following: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: 'Follow'
-        }
-    ],
-    followers: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: 'Follow'
-        }
-    ],
-    passwordChangedAt: {
-        type: Date,
-    },
-}, { timestamps: true })
-// , {
-//     toJSON: {
-//         transform: function (doc, ret) {
-//             delete ret.password; // Remove password field when converting to JSON
-//             return ret;
-//         }
-//     }
-// }
+const userSchema = new Schema<TUser>({
+  name: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    immutable: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  profileImg: {
+    type: String,
+    required: false,
+    default: 'https://i.ibb.co.com/z89cgQr/profile.webp',
+  },
+  role: {
+    type: String,
+    required: false,
+    enum: ['admin', 'user'],
+    default: 'user',
+  },
+  bio: {
+    type: String,
+    required: false,
+    default: 'Add your bio',
+  },
+  follower: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
+  following: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
+  premium: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  premiumLastDate: {
+    type: String,
+    required: false,
+  },
+  payment: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
+  isBlocked: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  isDeleted: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+});
 
 userSchema.pre('save', async function (next) {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const user = this; // doc
-    // hashing password and save into DB
-
-    const saltRounds = 10
-    user.password = await bcrypt.hash(
-        user.password, saltRounds
-    );
-
-    next();
+  const user = this;
+  user.password = await bcrypt.hash(
+    user.password,
+    Number(config.bcrypt_salt_rounds)
+  );
 });
 
-// set '' after saving password
 userSchema.post('save', function (doc, next) {
-    doc.password = '';
-    next();
+  doc.password = '';
+  next();
 });
 
-userSchema.statics.isUserExistsByEmail = async function (email: string) {
-    // return await User.findOne({ email });
-    return await User.findOne({ email }).select('+password');
-};
-
-userSchema.statics.isPasswordMatched = async function (
-    plainTextPassword,
-    hashedPassword,
-) {
-    return await bcrypt.compare(plainTextPassword, hashedPassword);
-};
-
-export const User = model<TUser, UserModel>('User', userSchema)
+export const User = model<TUser>('User', userSchema);

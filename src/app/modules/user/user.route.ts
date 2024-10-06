@@ -1,58 +1,45 @@
-import express from 'express';
-import validateRequest from '../../middlewares/validateRequest';
-
+import { Router } from 'express';
+import validateRequest from '../../middlwares/validateRequest';
+import { UserValidation } from './user.validation';
 import { UserControllers } from './user.controller';
-import auth from '../../middlewares/auth';
+import auth from '../../middlwares/auth';
+import { USER_ROLE } from '../../types';
 
+const router = Router();
 
-const router = express.Router();
+router.post(
+  '/signup',
+  validateRequest(UserValidation.signUpValidationSchema),
+  UserControllers.signUpUser
+);
 
-router.get('/user', auth('user', 'admin'), UserControllers.getUser)
+router.post(
+  '/login',
+  validateRequest(UserValidation.logInValidationSchema),
+  UserControllers.loginUser
+);
+
+router.patch(
+  '/change-password',
+  // validateRequest(UserValidation.changePasswordValidationSchema),
+  UserControllers.changePassword
+);
+
+router.get('/', auth(USER_ROLE.admin), UserControllers.getAllUser);
+
+router.get('/me', auth(USER_ROLE.user, USER_ROLE.admin), UserControllers.getMyData);
+
+router.get('/:id', UserControllers.getSingleUser);
 
 router.put(
-    '/:id',
-    auth('admin'),
-    UserControllers.updateUserIsBlocked,
+  '/:id',
+  auth(USER_ROLE.user, USER_ROLE.admin),
+  validateRequest(UserValidation.updateUserValidationSchema),
+  UserControllers.updateUser
 );
 
-router.put(
-    '/updateProfile/:id',
-    auth('admin', 'user'),
-    UserControllers.updateProfile,
-);
+router.post('/forgate-password', UserControllers.forgatePassword);
 
-router.get(
-    '/:id',
-    auth('user', 'admin'),
-    UserControllers.getSingleUser,
-);
+router.patch('/reset-password/:token', UserControllers.resetPassword);
 
-router.post(
-    '/signup',
-    // validateRequest(UserValidations.userValidationSchema),
-    UserControllers.signUp,
-);
-
-router.post(
-    '/login',
-    // validateRequest(UserValidations.loginValidationSchema),
-    UserControllers.loginUser,
-);
-
-router.post(
-    '/forget-password',
-    // validateRequest(AuthValidation.forgetPasswordValidationSchema),
-    UserControllers.forgetPassword,
-);
-
-router.post(
-    '/reset-password',
-    // validateRequest(AuthValidation.forgetPasswordValidationSchema),
-    UserControllers.resetPassword,
-);
-
-
-
-router.get('/', auth('user', 'admin'), UserControllers.getAllUsers)
-
-export const UserRoutes = router;
+export const UserRouter = router;

@@ -1,39 +1,30 @@
-import { Model, Types } from "mongoose";
-import { USER_ROLE } from "./user.constant";
-
-export type TUser = {
-    name: string;
-    email: string;
-    password: string;
-    phone: string;
-    role: 'admin' | 'user';
-    address: string;
-    photo?: string;
-    bio?: string;
-    isBlocked: boolean;
-    membership: 'free' | 'premium'
-    following?: Types.ObjectId;
-    followers?: Types.ObjectId;
-    passwordChangedAt?: Date;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export interface TUser {
+  post: any;
+  pre: any;
+  name: string;
+  email: string;
+  profileImg: string;
+  password: string;
+  role: 'admin' | 'user';
+  bio: string;
+  follower: number;
+  following: number;
+  premium: boolean;
+  payment: number;
+  premiumLastDate: string;
+  isBlocked: boolean;
+  isDeleted: boolean;
+  _id: string;
 }
 
-export type TLoginUser = {
-    email: string;
-    password: string;
-};
-
-export interface UserModel extends Model<TUser> {
-    //instance methods for checking if the user exist
-    isUserExistsByEmail(id: string): Promise<TUser>;
-    //instance methods for checking if passwords are matched
-    isPasswordMatched(
-        plainTextPassword: string,
-        hashedPassword: string,
-    ): Promise<boolean>;
-    // isJWTIssuedBeforePasswordChanged(
-    //   passwordChangedTimestamp: Date,
-    //   jwtIssuedTimestamp: number,
-    // ): boolean;
+export interface TLoginUser {
+  email: string;
+  password: string;
 }
 
-export type TUserRole = keyof typeof USER_ROLE;
+export interface TChangePassword {
+  email: string;
+  prePassword: string;
+  newPassword: string;
+}

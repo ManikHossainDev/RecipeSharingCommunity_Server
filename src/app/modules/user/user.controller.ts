@@ -1,135 +1,135 @@
-import httpStatus from "http-status";
-import catchAsync from "../../utils/catchAsync";
-import sendResponse from "../../utils/sendResponse";
-import { UserServices } from "./user.service";
-import AppError from "../../errors/AppError";
+/* eslint-disable no-unsafe-optional-chaining */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import httpStatus from 'http-status';
+import catchAsync from '../../utils/catchAsync';
+import sendResponse from '../../utils/sendResponse';
+import { UserService } from './user.service';
 
-const signUp = catchAsync(async (req, res) => {
-    const result = await UserServices.createUserIntoDB(req.body)
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'User registered successfully',
-        data: result,
-    });
-})
+const signUpUser = catchAsync(async (req, res) => {
+  const result = await UserService.signUpUserIntoDB(req.body);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User registered successfully',
+    data: result,
+  });
+});
 
 const loginUser = catchAsync(async (req, res) => {
-    const result = await UserServices.login(req.body);
-    const { accessToken, user } = result;
+  const result = await UserService.loginUser(req.body);
 
-
-    // res.cookie('refreshToken', refreshToken, {
-    //   secure: config.NODE_ENV === 'production',
-    //   httpOnly: true,
-    // });
-
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'User logged in successfully',
-        token: accessToken,
-        data: user,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User logged in successfully',
+    data: result,
+  });
 });
 
-const forgetPassword = catchAsync(async (req, res) => {
-    const userEmail = req.body.email;
-    const result = await UserServices.forgetPassword(userEmail);
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: 'Reset link is generated successfully!',
-        data: result,
-    });
+const changePassword = catchAsync(async (req, res) => {
+  const result = await UserService.changePassword(req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Password update successfully',
+    data: result,
+  });
 });
+
+const forgatePassword = catchAsync(async (req, res) => {
+  const result = await UserService.forgatePassword(req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Check your email!',
+    data: result,
+  });
+});
+
 const resetPassword = catchAsync(async (req, res) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    console.log(token, 'from resetpassword controller');
+  const body = req.body;
+  const params = req.params;
+  const data = { ...body, ...params };
+  await UserService.resetPassword(data);
 
-
-    if (!token) {
-        throw new AppError(httpStatus.NOT_FOUND, 'Token does not exist !');
-    }
-
-    const result = await UserServices.resetPassword(req.body, token);
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: 'Password reset successfully!',
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Password reset successfully',
+  });
 });
 
-const getUser = catchAsync(async (req, res) => {
-    const userId = req.user?.userId?._id
-    const result = await UserServices.getUserFromDB(userId)
-
+const getAllUser = catchAsync(async (req, res) => {
+  const result = await UserService.getAllUser();
+  if (!result.length) {
     sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'User retrieved successfully',
-        data: result,
+      statusCode: httpStatus.NOT_FOUND,
+      success: false,
+      message: 'User not found',
+      data: result,
     });
-})
+  }
 
-const getAllUsers = catchAsync(async (req, res) => {
-    const result = await UserServices.getAllUsersFromDB()
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User retrieved successfully',
+    data: result,
+  });
+});
 
+const getMyData = catchAsync(async (req, res) => {
+  const result = await UserService.getMyData();
+  if (!result.length) {
     sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Users retrieved successfully',
-        data: result,
+      statusCode: httpStatus.NOT_FOUND,
+      success: false,
+      message: 'User not found',
+      data: result,
     });
-})
+  }
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User retrieved successfully',
+    data: result,
+  });
+});
 
 const getSingleUser = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const result = await UserServices.getSingleUserFromDB(id)
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Single User retrieved successfully',
-        data: result,
-    });
-})
-
-const updateUserIsBlocked = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const result = await UserServices.updateUserIsBlockedIntoDB(id, req.body);
-
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'User block status updated successfully',
-        data: result,
-    });
+  const { id } = req?.params;
+  const result = await UserService.getSingleUser(id);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User retrieved successfully',
+    data: result,
+  });
 });
 
-const updateProfile = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const { name, email, bio, password, phone, address, photo } = req.body
+const updateUser = catchAsync(async (req, res) => {
+  const { id } = req.params;
 
-    const result = await UserServices.updateProfileIntoDB(id, { name, email, bio, password, phone, address, photo });
-
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Profile updated successfully',
-        data: result,
-    });
+  const result = await UserService.updateUser(id, req.body);
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User updated successfully',
+    data: result,
+  });
 });
-
 
 export const UserControllers = {
-    signUp,
-    loginUser,
-    forgetPassword,
-    getUser,
-    resetPassword,
-    getAllUsers,
-    updateUserIsBlocked,
-    updateProfile,
-    getSingleUser
-}
+  signUpUser,
+  loginUser,
+  changePassword,
+  forgatePassword,
+  resetPassword,
+  getAllUser,
+  getMyData,
+  getSingleUser,
+  updateUser,
+};

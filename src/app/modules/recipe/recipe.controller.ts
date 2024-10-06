@@ -1,115 +1,118 @@
-import httpStatus from "http-status";
-import catchAsync from "../../utils/catchAsync";
-import sendResponse from "../../utils/sendResponse";
-import { RecipeServices } from "./recipe.service";
+import httpStatus from 'http-status';
+import catchAsync from '../../utils/catchAsync';
+import sendResponse from '../../utils/sendResponse';
+import { RecipeService } from './recipe.service';
 
 const createRecipe = catchAsync(async (req, res) => {
+  const result = await RecipeService.createRecipeIntoDB(req.body);
 
-    const result = await RecipeServices.createRecipeIntoDB(req.body);
-
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Recipe added successfully',
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Recipe create successfully',
+    data: result,
+  });
 });
 
-const getAllCategories = catchAsync(async (req, res) => {
-    const result = await RecipeServices.getAllCategoriesFromDB();
-
-    // Check if the database collection is empty or no matching data is found
-    if (!result || result.length === 0) {
-        return sendResponse(res, {
-            success: false,
-            statusCode: httpStatus.NOT_FOUND,
-            message: 'No data found.',
-            data: [],
-        });
-    }
-
+const getAllRecipe = catchAsync(async (req, res) => {
+  const result = await RecipeService.getAllRecipeFromDB();
+  if (!result.length) {
     sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Categories retrieved successfully',
-        data: result,
+      statusCode: httpStatus.NOT_FOUND,
+      success: false,
+      message: 'No Data Found',
+      data: result,
     });
+  }
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Recipe retrieved successfully',
+    data: result,
+  });
 });
 
-const getAllRecipes = catchAsync(async (req, res) => {
-    const result = await RecipeServices.getAllRecipesFromDB();
-
-    // Check if the database collection is empty or no matching data is found
-    if (!result || result.length === 0) {
-        return sendResponse(res, {
-            success: false,
-            statusCode: httpStatus.NOT_FOUND,
-            message: 'No data found.',
-            data: [],
-        });
-    }
-
+const getAllRecipeWithShort = catchAsync(async (req, res) => {
+  const { page = 1, limit = 4 } = req.query;
+  const result = await RecipeService.getAllRecipeWithShortFromDB(
+    Number(page),
+    Number(limit)
+  );
+  if (!result.length) {
     sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Recipes retrieved successfully',
-        data: result,
+      statusCode: httpStatus.NOT_FOUND,
+      success: false,
+      message: 'No Data Found',
+      data: result,
     });
+  }
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Recipe retrieved successfully',
+    data: result,
+  });
 });
 
 const getSingleRecipe = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const result = await RecipeServices.getSingleRecipeFromDB(id)
+  const { id } = req.params;
+  const result = await RecipeService.getSingleRecipeFromDB(id);
+  if (!result.length) {
     sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Single Recipe retrieved successfully',
-        data: result,
+      statusCode: httpStatus.NOT_FOUND,
+      success: false,
+      message: 'No Data Found',
+      data: result,
     });
-})
+  }
 
-const getRecipesByUser = catchAsync(async (req, res) => {
-    const userId = req.user?.userId?._id
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Recipe retrieved successfully',
+    data: result,
+  });
+});
 
-    const result = await RecipeServices.getRecipesByUserFromDB(userId);
+const updateRecipe = catchAsync(async (req, res) => {
+  const { id } = req.params;
 
+  const result = await RecipeService.updateRecipeFromDB(id, req.body);
 
-    // Check if the database collection is empty or no matching data is found
-    if (!result || result.length === 0) {
-        return sendResponse(res, {
-            success: false,
-            statusCode: httpStatus.NOT_FOUND,
-            message: 'No data found.',
-            data: [],
-        });
-    }
-
-    sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Recipes retrieved successfully',
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Recipe updated successfully',
+    data: result,
+  });
 });
 
 const deleteRecipe = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const result = await RecipeServices.deleteRecipeFromDB(id);
+  const { id } = req.params;
+  const result = await RecipeService.deleteRecipeFromDB(id);
 
+  if (!result) {
     sendResponse(res, {
-        success: true,
-        statusCode: httpStatus.OK,
-        message: 'Recipe deleted successfully',
-        data: result,
+      statusCode: httpStatus.NOT_FOUND,
+      success: false,
+      message: 'No Data Found',
+      data: result,
     });
+  }
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Recipe deleted successfully',
+    data: result,
+  });
 });
 
-
 export const RecipeControllers = {
-    createRecipe,
-    getAllRecipes,
-    getSingleRecipe,
-    getRecipesByUser,
-    getAllCategories,
-    deleteRecipe
-}
+  createRecipe,
+  getAllRecipe,
+  getSingleRecipe,
+  getAllRecipeWithShort,
+  updateRecipe,
+  deleteRecipe,
+};

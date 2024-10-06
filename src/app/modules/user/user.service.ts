@@ -1,217 +1,282 @@
-import httpStatus from "http-status";
-import AppError from "../../errors/AppError";
-import { TLoginUser, TUser } from "./user.interface";
-import { User } from './user.model'
-import { createToken } from "./user.utils";
-import config from "../../config";
-import { sendEmail } from "../../utils/sendEmail";
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import bcrypt from 'bcrypt'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-require-imports */
+import AppError from '../../errors/AppError';
+import { TChangePassword, TLoginUser, TUser } from './user.interface';
+import { User } from './user.model';
+import httpStatus from 'http-status';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import config from '../../config';
+import nodemailer from 'nodemailer';
+import { getUserInfo } from '../../middlwares/auth';
 
-const createUserIntoDB = async (payload: TUser) => {
-    try {
-        let user = await User.create(payload)
+const signUpUserIntoDB = async (payload: TUser) => {
+  const result = await User.create(payload);
 
-        return user
-    } catch (error) {
-        console.log(error);
-    }
-}
+  const jwtPayload = {
+    email: result?.email,
+    role: result?.role,
+    userId: result?._id,
+  };
 
-const login = async (payload: TLoginUser) => {
-    // checking if the user is exist
-    const user = await User.isUserExistsByEmail(payload.email)
+  const accessToken = jwt.sign(jwtPayload, config.jwt_access_secret as string, {
+    expiresIn: '1d',
+  });
+  return { data: result, token: accessToken };
+};
 
-    if (!user) {
-        throw new AppError(httpStatus.NOT_FOUND, 'This user does not exist !');
-    }
+const loginUser = async (payload: TLoginUser) => {
+  const isUserExists = await User.findOne({ email: payload?.email });
+  if (!isUserExists) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found !');
+  }
 
-    const userIsBlocked = user.isBlocked
+  const isPassswordMatched = await bcrypt.compare(
+    payload?.password,
+    isUserExists?.password
+  );
+  if (!isPassswordMatched) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Password is incorrect!');
+  }
 
-    if (userIsBlocked === true) {
-        throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked ! !');
-    }
+  //create token and sent to the client
 
-    //checking if the password is correct
-    if (!(await User.isPasswordMatched(payload?.password, user?.password)))
-        throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
+  const jwtPayload = {
+    email: isUserExists?.email,
+    role: isUserExists?.role,
+    userId: isUserExists?._id,
+  };
 
-    //create token and sent to the  client
-    const jwtPayload = {
-        userId: user,
-        role: user.role,
-    };
+  const accessToken = jwt.sign(jwtPayload, config.jwt_access_secret as string, {
+    expiresIn: '1d',
+  });
 
-    const accessToken = createToken(
-        jwtPayload,
-        config.jwt_secret as string,
-        config.jwt_secret_expires_in as string,
+  const {
+    _id,
+    email,
+    password,
+    role,
+    profileImg,
+    follower,
+    following,
+    bio,
+    premium,
+    payment,
+  } = isUserExists;
+  const userData = {
+    _id,
+    email,
+    password,
+    role,
+    profileImg,
+    follower,
+    following,
+    bio,
+    premium,
+    payment,
+  };
+  return {
+    token: accessToken,
+    data: userData,
+  };
+};
+
+const changePassword = async (payload: TChangePassword) => {
+  const isUserExists = await User.findOne({ email: payload?.email });
+  if (!isUserExists) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+
+  const isPasswordMatched = await bcrypt.compare(
+    payload?.prePassword,
+    isUserExists?.password
+  );
+  if (!isPasswordMatched) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Previous passord is incorrect!');
+  }
+
+  // hash the new password
+  const hashedPassword = await bcrypt.hash(
+    payload?.newPassword,
+    Number(config.bcrypt_salt_rounds)
+  );
+
+  const updatePassword = await User.updateOne(
+    { email: payload?.email },
+    { password: hashedPassword }
+  );
+
+  if (updatePassword.modifiedCount === 0) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Password update failed!'
     );
+  }
 
-    // const refreshToken = createToken(
-    //   jwtPayload,
-    //   config.jwt_refresh_secret as string,
-    //   config.jwt_refresh_expires_in as string,
-    // );
+  const jwtPayload = {
+    email: isUserExists?.email,
+    role: isUserExists?.role,
+    userId: isUserExists?._id,
+    profileImg: isUserExists?.profileImg,
+  };
 
-    return {
-        accessToken,
-        user
-        //   refreshToken,
-    };
+  const accessToken = jwt.sign(jwtPayload, config.jwt_access_secret as string, {
+    expiresIn: '1d',
+  });
+
+  return {
+    token: accessToken,
+  };
 };
 
-const forgetPassword = async (userEmail: string) => {
-    try {
-        const user = await User.isUserExistsByEmail(userEmail)
+const forgatePassword = async (payload: any) => {
+  const isUserExists = await User.findOne({ email: payload?.email });
 
-        if (!user) {
-            throw new AppError(httpStatus.NOT_FOUND, 'This user does not exist !');
-        }
+  if (!isUserExists) {
+    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found!');
+  }
+  const accessToken = jwt.sign(
+    { id: isUserExists?._id, email: isUserExists?.email },
+    config.jwt_access_secret as string,
+    { expiresIn: '10m' }
+  );
 
-        const jwtPayload = {
-            userId: user,
-            role: user.role,
-        };
+  // nodejs email sender
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: config.reset_password_email,
+      pass: config.reset_password_password,
+    },
+  });
 
-        const resetToken = createToken(
-            jwtPayload,
-            config.jwt_secret as string,
-            '10m',
-        );
+  const mailOptions = {
+    from: 'anamulhaque9901@gmail.com',
+    to: `${isUserExists?.email}`,
+    subject: 'Reset your password',
+    text: `https://l2-a6-recipe-sharing-client.vercel.app/reset-password/${accessToken}`,
+  };
 
-        // const resetUILink = `${config.reset_pass_ui_link}?email=${user.email}&token=${resetToken}`
-
-        const resetUILink = `${config.reset_pass_ui_link}/reset-password?email=${user.email}&token=${resetToken}`
-        console.log(resetUILink, 'resetUILink', user.email, 'use email');
-
-
-        sendEmail(user.email, resetUILink)
-    } catch (error) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Failed to send reset link');
+  transporter.sendMail(mailOptions, function (error, info) {
+    if (error) {
+      console.log('error', error);
+    } else {
+      return { message: 'Success' };
     }
-
+  });
 };
 
+const resetPassword = async (payload: any) => {
+  const { token, password } = payload;
 
-const resetPassword = async (payload: { email: string, newPassword: string }, token: string) => {
-    try {
-        const user = await User.isUserExistsByEmail(payload.email)
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, config.jwt_access_secret as string);
+  } catch (err) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Error verifying token'
+    );
+  }
+  
+  // Hash the new password
+  const hashedPassword: any = await bcrypt.hash(
+    password,
+    Number(config.bcrypt_salt_rounds)
+  );
 
-        if (!user) {
-            throw new AppError(httpStatus.NOT_FOUND, 'This user does not exist !');
-        }
+  const id = decoded?.id;
+  const updatePassword = await User.updateOne(
+    { _id: id },
+    { password: hashedPassword }
+  );
 
-        const decoded = jwt.verify(
-            token,
-            config.jwt_secret as string,
-        ) as JwtPayload;
+  if (updatePassword?.modifiedCount === 0) {
+    throw new AppError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'Password reset failed!'
+    );
+  }
 
-        console.log(decoded, 'from resetPassword');
+  return { message: 'Password reset successfully!' };
+};
 
+const getAllUser = async () => {
+  const result = await User.find();
+  return result;
+};
 
-        if (payload.email !== decoded.userId.email) {
-            throw new AppError(httpStatus.FORBIDDEN, 'You are forbidden')
-        }
+const getMyData = async () => {
+  const user = getUserInfo();
+  const result = await User.find({ email: user?.email });
+  return result;
+};
+const getSingleUser = async (id: string) => {
+  const result = await User.findById({ _id: id });
+  const { role, profileImg, name, _id, premium, following, follower, bio } =
+    result as TUser;
+  const finalResult = {
+    role,
+    profileImg,
+    name,
+    _id,
+    premium,
+    following,
+    follower,
+    bio,
+  };
+  return finalResult;
+};
 
-        // Hash new password
-        const saltRounds = 10
-        const newHashedPassword = await bcrypt.hash(
-            payload.newPassword, saltRounds
-        );
+const updateUser = async (id: string, payload: TUser) => {
+  const user = getUserInfo();
+  let result;
+  if (
+    (payload?.follower ||
+      payload?.following ||
+      payload?.follower == 0 ||
+      payload?.following == 0) &&
+    !payload?.bio &&
+    !payload?.premium &&
+    !payload?.payment &&
+    !payload?.isBlocked &&
+    !payload?.isDeleted &&
+    !payload?.name &&
+    !payload?.email &&
+    !payload?.password &&
+    !payload?.profileImg &&
+    !payload?.role
+  ) {
+    result = await User.findByIdAndUpdate({ _id: id }, payload, {
+      new: true,
+    });
+  } else {
+    const findRecipeByUser = await User.findOne({
+      email: user?.email,
+      _id: id,
+    });
 
-        await User.findOneAndUpdate({
-            email: decoded.userId.email,
-            role: decoded.userId.role
-        }, {
-            password: newHashedPassword,
-            passwordChangedAt: new Date()
-        })
-
-        console.log(decoded, 'decoded from user.service reset');
-    } catch (error) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Failed to reset password');
+    if (findRecipeByUser || user?.role === 'admin') {
+      result = await User.findByIdAndUpdate({ _id: id }, payload, {
+        new: true,
+      });
+    } else {
+      throw new AppError(httpStatus.UNAUTHORIZED, 'This is not your account');
     }
+  }
 
-
+  return result;
 };
 
-const getUserFromDB = async (payload: TUser) => {
-    const user = await User.findOne({ _id: payload })
-    return user
+export const UserService = {
+  signUpUserIntoDB,
+  loginUser,
+  changePassword,
+  forgatePassword,
+  resetPassword,
+  getAllUser,
+  getMyData,
+  getSingleUser,
+  updateUser,
 };
-
-const getAllUsersFromDB = async () => {
-    const user = await User.find()
-    return user
-};
-
-const getSingleUserFromDB = async (id: string) => {
-    const result = await User.findById(id).select('-role -membership -password')
-    return result
-}
-
-const updateUserIsBlockedIntoDB = async (id: string, payload: Partial<TUser>) => {
-    try {
-        const isBlockedStatus = await User.findByIdAndUpdate(id, payload, {
-            new: true,
-            runValidators: true,
-        })
-
-        if (!isBlockedStatus) {
-            throw new AppError(httpStatus.BAD_REQUEST, 'Failed to update user block status');
-        }
-
-        return isBlockedStatus
-    } catch (error) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Failed to update user block status');
-    }
-};
-
-const updateProfileIntoDB = async (id: string, payload: Partial<TUser>) => {
-    const { name, email, bio, password, phone, address, photo } = payload
-
-    let updateData: Partial<TUser> = {
-        name,
-        email,
-        bio,
-        phone,
-        address,
-        photo,
-    };
-
-    // Only hash and update password if it's provided
-    if (password) {
-        const salt = await bcrypt.genSalt();
-        const passwordHash = await bcrypt.hash(password, salt);
-        updateData.password = passwordHash;
-    }
-
-    try {
-        const updatedProfile = await User.findByIdAndUpdate(id, updateData, {
-            new: true,
-            runValidators: true,
-        })
-
-        if (!updatedProfile) {
-            throw new AppError(httpStatus.BAD_REQUEST, 'Failed to update profile');
-        }
-
-        return updatedProfile
-    } catch (error) {
-        throw new AppError(httpStatus.BAD_REQUEST, 'Failed to update profile');
-    }
-};
-
-
-export const UserServices = {
-    createUserIntoDB,
-    login,
-    forgetPassword,
-    getUserFromDB,
-    resetPassword,
-    getAllUsersFromDB,
-    updateUserIsBlockedIntoDB,
-    updateProfileIntoDB,
-    getSingleUserFromDB
-}

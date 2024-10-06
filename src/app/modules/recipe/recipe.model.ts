@@ -1,48 +1,75 @@
-import { Schema, model } from "mongoose";
-import { TRecipe } from "./recipe.interface";
-
+import { model, Schema } from 'mongoose';
+import { TRecipe } from './recipe.interface';
 
 const recipeSchema = new Schema<TRecipe>({
-    title: {
-        type: String,
-        required: true
-    },
-    desc: {
-        type: String,
-        required: true
-    },
-    image: {
-        type: String,
-        required: true
-    },
-    reviews: [
-        {
-            user: {
-                type: Schema.Types.ObjectId,
-                ref: 'User',
-            },
-            rating: {
-                type: Number
-            },
-            comment: {
-                type: String
-            },
-        }
-    ],
-    contentAvailability: {
-        type: String,
-        enum: ['free', 'premium'],
-        required: true
-    },
-    user: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        // required: true
-    },
-    category: {
-        type: [String],
-        required: true
-    },
-}, { timestamps: true })
+  title: {
+    type: String,
+    required: true,
+  },
+  description: {
+    type: String,
+    required: false,
+  },
+  image: {
+    type: String,
+    required: false,
+  },
+  publishUser: {
+    type: String,
+    required: true,
+    immutable: true,
+  },
+  publishUserId: {
+    type: String,
+    required: true,
+    immutable: true,
+  },
+  publishUserImage: {
+    type: String,
+    required: false,
+  },
+  publishUserName: {
+    type: String,
+    required: false,
+  },
+  cookingTime: {
+    type: String,
+    required: false,
+  },
+  isPremium: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  idPublish: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+  isDeleted: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+  rating: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
+  upvote: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
+  downvote: {
+    type: Number,
+    required: false,
+    default: 0,
+  },
+  instructions: {
+    type: String,
+    required: false,
+  },
+});
 
-export const RecipeModel = model<TRecipe>('Recipe', recipeSchema)
+export const Recipe = model<TRecipe>('Recipe', recipeSchema);

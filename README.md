@@ -4,7 +4,7 @@ This README file provides instructions for setting up and running the applicatio
 
 ## Live URL
  ```url
-   https://l2-a6-recipe-sharing-server.vercel.app/api
+   https://recipe-sharing-community-server.vercel.app/api
    ```
 ## Features
 
@@ -57,7 +57,7 @@ This README file provides instructions for setting up and running the applicatio
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/Anamul9901/new-add-ts.git
+   git clone https://github.com/Programmer-Manik/RecipeSharingCommunity_Server.git
    ```
 
 2. **Navigate to my project directory**

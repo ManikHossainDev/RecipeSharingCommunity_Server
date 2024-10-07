@@ -12,7 +12,7 @@ export const initiatePayment = async (paymentData: any) => {
       tran_id: paymentData.transactionId,
       success_url: `https://recipe-sharing-community-server.vercel.app/api/payment/confirmation?transactionId=${paymentData.transactionId}&status=success`,
       fail_url: `https://recipe-sharing-community-server.vercel.app/api/payment/confirmation?status=failed`,
-      cancel_url: 'https://l2-a6-recipe-sharing-client.vercel.apps/dashboard/membership?key=membership',
+      cancel_url: 'https://recipe-sharing-community-client.vercel.app/dashboard/membership?key=membership',
       amount: paymentData.totalPrice,
       currency: 'BDT',
       desc: 'Merchant Registration Payment',

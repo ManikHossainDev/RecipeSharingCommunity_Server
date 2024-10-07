@@ -12,7 +12,7 @@ app.use(
   cors({
     origin: [
       'http://localhost:3000',
-      'https://l2-a6-recipe-sharing-client.vercel.app',
+      'https://recipe-sharing-community-client.vercel.app',
     ],
     credentials: true
   })
